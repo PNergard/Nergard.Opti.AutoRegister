@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RootNamespace>Nergard.Opti.AutoRegister</RootNamespace>
+    <AssemblyName>Nergard.Opti.AutoRegister</AssemblyName>
+
+    <!-- Shared as source. Still packable on demand via `dotnet pack`, but not on every build. -->
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageId>Nergard.Opti.AutoRegister</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Per Nergård</Authors>
+    <Description>
+      Decorate an Optimizely CMS 13 content type with [RegisterIn(typeof(Settings))] and, on create/publish,
+      the newly created page is automatically wired into the matching (empty) ContentReference property on
+      the resolved settings instance — no manual settings editing.
+    </Description>
+    <PackageTags>optimizely;episerver;cms;cms13;settings;contentreference;automation</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <InternalsVisibleTo Include="Nergard.Opti.AutoRegister.Tests" />
+  </ItemGroup>
+
+  <!-- The test project lives under test\; keep it out of the library's source glob. -->
+  <ItemGroup>
+    <Compile Remove="test\**" />
+    <None Remove="test\**" />
+    <Content Remove="test\**" />
+    <EmbeddedResource Remove="test\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EPiServer.CMS.Core" Version="[13.0.0, 14.0.0)" />
+  </ItemGroup>
+
+</Project>

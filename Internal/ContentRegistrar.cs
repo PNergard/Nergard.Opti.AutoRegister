@@ -18,20 +18,17 @@ internal sealed class ContentRegistrar : IContentRegistrar
     private readonly IContentRepository _contentRepository;
     private readonly ISettingsTargetResolver _targetResolver;
     private readonly PropertyMatcher _propertyMatcher;
-    private readonly AutoRegisterOptions _options;
     private readonly ILogger<ContentRegistrar> _logger;
 
     public ContentRegistrar(
         IContentRepository contentRepository,
         ISettingsTargetResolver targetResolver,
         PropertyMatcher propertyMatcher,
-        AutoRegisterOptions options,
         ILogger<ContentRegistrar> logger)
     {
         _contentRepository = contentRepository;
         _targetResolver = targetResolver;
         _propertyMatcher = propertyMatcher;
-        _options = options;
         _logger = logger;
     }
 
@@ -97,7 +94,10 @@ internal sealed class ContentRegistrar : IContentRegistrar
 
         property.SetValue(clone, source.ContentLink);
 
-        var saveAction = _options.RepublishTargetOnChange ? SaveAction.Publish : SaveAction.Save;
+        // Publish so the reference is immediately live. SkipValidation because settings pages often
+        // have several *required* references (the whole reason this tool exists): without it, setting
+        // the first reference would fail validation while the others are still empty.
+        const SaveAction saveAction = SaveAction.Publish | SaveAction.SkipValidation;
 
         try
         {

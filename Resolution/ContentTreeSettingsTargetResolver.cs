@@ -12,11 +12,13 @@ namespace Nergard.Opti.AutoRegister.Resolution;
 /// Default <see cref="ISettingsTargetResolver"/>. Resolves the settings instance from the content
 /// tree, scoped to the application (site) that owns the source content:
 /// <list type="number">
-///   <item><description>Resolve the source content's application and its routing entry point (start page).</description></item>
+///   <item><description>Resolve the source content's application and its entry point (start page).</description></item>
 ///   <item><description>If the start page itself is of the settings type, use it (common: a StartPage that doubles as settings container).</description></item>
-///   <item><description>Otherwise return the single descendant of the start page of the settings type.</description></item>
+///   <item><description>Otherwise return the single direct child of the start page of the settings type.</description></item>
 /// </list>
-/// If zero or more than one instance is found, none is returned and a warning is logged.
+/// Only the start page and its direct children are inspected — this stays cheap on large sites. For a
+/// settings instance placed deeper in the tree (or resolved via a settings add-on), register a custom
+/// <see cref="ISettingsTargetResolver"/>.
 /// </summary>
 internal sealed class ContentTreeSettingsTargetResolver : ISettingsTargetResolver
 {
@@ -39,8 +41,8 @@ internal sealed class ContentTreeSettingsTargetResolver : ISettingsTargetResolve
         var startPageRef = ResolveStartPage(source);
         if (ContentReference.IsNullOrEmpty(startPageRef))
         {
-            _logger.LogWarning(
-                "AutoRegister: could not resolve an application/start page for '{Source}' ({Link}); skipping registration into '{SettingsType}'.",
+            _logger.LogDebug(
+                "AutoRegister: no application/start page for '{Source}' ({Link}); skipping registration into '{SettingsType}'.",
                 source.Name, source.ContentLink, settingsType.Name);
             return Enumerable.Empty<IContent>();
         }
@@ -52,11 +54,10 @@ internal sealed class ContentTreeSettingsTargetResolver : ISettingsTargetResolve
             return new[] { startPage };
         }
 
+        // Otherwise look for a single direct child of the start page of the settings type.
         var matches = _contentLoader
-            .GetDescendents(startPageRef!)
-            .Select(link => _contentLoader.TryGet<IContent>(link, out var c) ? c : null)
-            .Where(c => c is not null && settingsType.IsInstanceOfType(c))
-            .Cast<IContent>()
+            .GetChildren<IContent>(startPageRef!)
+            .Where(settingsType.IsInstanceOfType)
             .ToList();
 
         if (matches.Count == 1)
@@ -64,9 +65,19 @@ internal sealed class ContentTreeSettingsTargetResolver : ISettingsTargetResolve
             return matches;
         }
 
-        _logger.LogWarning(
-            "AutoRegister: expected exactly one '{SettingsType}' under start page {StartPage} but found {Count}; skipping registration for '{Source}'.",
-            settingsType.Name, startPageRef, matches.Count, source.Name);
+        if (matches.Count == 0)
+        {
+            _logger.LogDebug(
+                "AutoRegister: no '{SettingsType}' found at or directly under start page {StartPage}; skipping registration for '{Source}'.",
+                settingsType.Name, startPageRef, source.Name);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "AutoRegister: expected one '{SettingsType}' directly under start page {StartPage} but found {Count}; skipping registration for '{Source}'. Use a custom ISettingsTargetResolver to disambiguate.",
+                settingsType.Name, startPageRef, matches.Count, source.Name);
+        }
+
         return Enumerable.Empty<IContent>();
     }
 
